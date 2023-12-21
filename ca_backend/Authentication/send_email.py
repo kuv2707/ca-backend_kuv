@@ -17,12 +17,17 @@ def send(rec_email,msg):
     """
     Function to send verification email to the user 
     """
-    
-    with smtplib.SMTP("smtp.gmail.com", port=587) as connection:
-        connection.starttls()
-        connection.login(user=config("EMAIL_HOST_USER"), password=config("EMAIL_HOST_PASSWORD"))
-        connection.sendmail(from_addr=config("EMAIL_HOST_USER"), to_addrs=rec_email,msg=msg)
-        # connection.close()
-    
+    try:
+
+        with smtplib.SMTP("smtp.gmail.com", port=587) as connection:
+            connection.starttls()
+            connection.login(user=config("EMAIL_HOST_USER",""), password=config("EMAIL_HOST_PASSWORD",""))
+            connection.sendmail(from_addr=config("EMAIL_HOST_USER"), to_addrs=rec_email,msg=msg)
+            # connection.close()
+    except Exception as e:
+        print(e)
+        return False
+    return True
+        
 
 
