@@ -1,6 +1,7 @@
 from rest_framework import serializers
-from .models import Task
+from .models import Task ,TaskSubmission
 from Authentication.models import UserProfile
+from Authentication.serializers import ProfileSerializer
 
 
 class TaskSerializer(serializers.ModelSerializer):
@@ -16,4 +17,16 @@ class TaskSerializer(serializers.ModelSerializer):
 class LeaderboardSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ["user_name", "points"]
+        fields = ["user_name","first_name","last_name", "points"]
+
+
+class TaskSubmissionSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Task Submission model's CreateView
+    """
+
+    task = TaskSerializer(read_only=True)
+    
+    class Meta:
+        model = TaskSubmission
+        fields = "__all__"
