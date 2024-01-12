@@ -37,7 +37,7 @@ CORS_ORIGIN_ALLOW_ALL = True
 # Application definition
 
 INSTALLED_APPS = [
-    #cors
+    # cors
     'corsheaders',
     'Authentication',
     'Task',
@@ -59,7 +59,7 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
-    'corsheaders.middleware.CorsMiddleware', #cors
+    'corsheaders.middleware.CorsMiddleware',  # cors
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -69,29 +69,30 @@ CORS_ORIGIN_ALLOW_ALL = True
 
 
 REST_FRAMEWORK = {
-     "DEFAULT_AUTHENTICATION_CLASSES": (
+    "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
         "Task.permissions.IsAdminUser",
     ),
-    'DEFAULT_PERMISSION_CLASSES':(
+    'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticatedOrReadOnly',
         'ca_backend.permissions.IsAdminUser'
     )
 }
 
 JWT_AUTH = {
-    "JWT_SECRET_KEY": config("JWT_SECRET_KEY"),  # Replace with a strong secret key
+    # Replace with a strong secret key
+    "JWT_SECRET_KEY": config("JWT_SECRET_KEY"),
     "JWT_ALGORITHM": "HS256",
     "JWT_ALLOW_REFRESH": True,  # TODO: decide
     "JWT_EXPIRATION_DELTA": datetime.timedelta(
         days=30
-    ),  # Token expiration (adjust as needed)
+    ),
     "JWT_REFRESH_EXPIRATION_DELTA": datetime.timedelta(
         days=30
-    ),  # Refresh token expiration
+    ),
 }
 
 
@@ -188,15 +189,15 @@ SWAGGER_SETTINGS = {
 PASSWORD_HASHERS = [
     "django.contrib.auth.hashers.BCryptPasswordHasher",
 ]
-EMAIL_BACKEND="django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST="smtp.gmail.com"
-EMAIL_PORT=587
-EMAIL_HOST_USER=config("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD="balasperdidas"
-EMAIL_USE_TLS=True
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = "balasperdidas"
+EMAIL_USE_TLS = True
 
 
-#cors allow localhost:3000
+# todo: restrict as appropriate
 ALLOWED_HOSTS = ['*']
 CORS_ORIGIN_ALLOW_ALL = True
 CORS_ALLOW_CREDENTIALS = True

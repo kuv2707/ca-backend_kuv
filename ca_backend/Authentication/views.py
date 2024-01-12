@@ -1,33 +1,25 @@
 import datetime
-import smtplib
 from decouple import config
 import random
 import uuid
-from django.shortcuts import render, get_object_or_404
-from rest_framework import generics, serializers, status, authentication, permissions, views
+from rest_framework import generics, status, permissions, views
 from rest_framework.response import Response
-from rest_framework_jwt.settings import api_settings
-from django.contrib.auth import authenticate, login, logout
 from drf_yasg.utils import swagger_auto_schema
 from django.http import HttpResponseRedirect
-
-
 from ca_backend.permissions import IsAdminUser
 from .models import UserAccount, VerificationModel, UserProfile, ForgotPasswordOTPModel, ReferralCode
 from .serializers import (
     ProfileSerializer,
     RegisterSerializer,
-    LoginSerializer,
-    VerificationSerializer,
     check,
     UserSerializer,
     CombinedRegisterProfileSerializer,
     ForgotPasswordSerializer,
     ResetPasswordSerializer,
-    VerifyOTPSerializer    
+    VerifyOTPSerializer
 )
 from .send_email import send_approved_email, send_email_cnf_email, send_email_verif_email, send_otp_email
-import bcrypt  
+import bcrypt
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import password_validation
 
@@ -53,25 +45,27 @@ class RegisterView(generics.GenericAPIView):
                 {"error": "User with same credentials already exists!"},
                 status=status.HTTP_226_IM_USED,
             )
-        request.data["referral_code"]=f'{uuid.uuid4()}_{datetime.datetime.now()}'
+        request.data["referral_code"] = f'{uuid.uuid4()}_{datetime.datetime.now()}'
         raw_password = request.data.get("password")
         try:
-            password_validation.validate_password(raw_password, user=UserAccount)
+            password_validation.validate_password(
+                raw_password, user=UserAccount)
         except Exception as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_409_CONFLICT,
             )
-        hashed_password = bcrypt.hashpw(raw_password.encode("utf-8"), bcrypt.gensalt())
+        hashed_password = bcrypt.hashpw(
+            raw_password.encode("utf-8"), bcrypt.gensalt())
         request.data["password"] = hashed_password.decode("utf-8")
 
         user_serializer = RegisterSerializer(data=request.data)
         if user_serializer.is_valid():
             user = user_serializer.save()
             request.data["user"] = user.id
-            request.data["user_name"]=user.username
-            request.data["points"]=0
-            request.data["status"]="P"
+            request.data["user_name"] = user.username
+            request.data["points"] = 0
+            request.data["status"] = "P"
             profile_serializer = ProfileSerializer(data=request.data)
             if not profile_serializer.is_valid():
                 user.delete()
@@ -80,12 +74,12 @@ class RegisterView(generics.GenericAPIView):
                 )
 
             profile_serializer.save(user=user)
-            email_token=uuid.uuid4()
-            verif_row=VerificationModel(userid=user,email_token=email_token)
+            email_token = uuid.uuid4()
+            verif_row = VerificationModel(userid=user, email_token=email_token)
             verif_row.save()
-            referral_code = ReferralCode(user=user, referral_code=f"tnx24_{user.username}")
+            referral_code = ReferralCode(
+                user=user, referral_code=f"tnx24_{user.username}")
             referral_code.save()
-            # send email to the user containing a link to verify their email
             send_email_verif_email(user.email, email_token)
             return Response(
                 {"success": "Verification link has been sent by email!"},
@@ -103,6 +97,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Custom TokenObtainPairView to return access token
     """
+
     def post(self, request):
         username = request.data.get("username")
         password = request.data.get("password")
@@ -116,12 +111,12 @@ class CustomTokenObtainPairView(TokenObtainPairView):
                 return Response(
                     {"error": "User does not exist."}, status=status.HTTP_400_BAD_REQUEST
                 )
-        
+
         if user.status == "P":
             return Response(
                 {"error": "User not verified by admin yet."}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         if user.email_verified == False:
             return Response(
                 {"error": "Email not verified! First verify email."}, status=status.HTTP_400_BAD_REQUEST
@@ -148,7 +143,7 @@ class UserProfileView(generics.GenericAPIView):
     @swagger_auto_schema(
         responses={
             401: """ {"error": "Authorization header not found!"}""",
-        },        
+        },
     )
     def get(self, request):
         """
@@ -158,46 +153,48 @@ class UserProfileView(generics.GenericAPIView):
         serializer = UserSerializer(user)
         referral_code = ReferralCode.objects.filter(user=user).first()
         data = serializer.data
-        data['rank'] = UserProfile.objects.filter(points__gt=user.userprofile.points).count() + 1
+        data['rank'] = UserProfile.objects.filter(
+            points__gt=user.userprofile.points).count() + 1
         data["referral_code"] = referral_code.referral_code
         return Response(data, status=status.HTTP_200_OK)
-    
+
 
 class StatusCheck(views.APIView):
     def get(request, user):
         return Response(
-            {"message":"Working"},
-            status = status.HTTP_200_OK,
+            {"message": "Working"},
+            status=status.HTTP_200_OK,
         )
-   
+
 
 class VerifyAccountView(views.APIView):
     """
     Verify the User Account by admin
     """
-    permission_classes = [permissions.IsAuthenticated,IsAdminUser]
-    #todo: any authenticated user is able to access this endpoint
+    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+
     @swagger_auto_schema(
         responses={
             200: """{"success": "All verifiable users list"}""",
             400: """{"error": "Bad Request"}""",
         }
     )
-    def get(self,request):
+    def get(self, request):
         try:
             vm_obs = VerificationModel.objects.all()
-            profiles = UserProfile.objects.filter(user__in=[vm_ob.userid for vm_ob in vm_obs])
+            profiles = UserProfile.objects.filter(
+                user__in=[vm_ob.userid for vm_ob in vm_obs])
             serializer = ProfileSerializer(profiles, many=True)
-            tokens=[vm_ob.email_token for vm_ob in vm_obs]
-            for i,token in enumerate(tokens):
-                serializer.data[i]["email_token"]=token
+            tokens = [vm_ob.email_token for vm_ob in vm_obs]
+            for i, token in enumerate(tokens):
+                serializer.data[i]["email_token"] = token
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
-            )        
-    
+            )
+
     @swagger_auto_schema(
         responses={
             200: """{"success": "User verified successfully!"}""",
@@ -206,7 +203,8 @@ class VerifyAccountView(views.APIView):
     )
     def post(self, request):
         try:
-            verif_row = VerificationModel.objects.filter(email_token=request.data["token"]).first()
+            verif_row = VerificationModel.objects.filter(
+                email_token=request.data["token"]).first()
             print(verif_row)
             if verif_row is None:
                 return Response(
@@ -224,7 +222,7 @@ class VerifyAccountView(views.APIView):
                     {"error": "User already verified!"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            
+
             user.status = "V"
             verif_row.delete()
             user.save()
@@ -238,7 +236,6 @@ class VerifyAccountView(views.APIView):
                 {"error": str(e)},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        
 
 
 class VerifyEmailView(views.APIView):
@@ -246,17 +243,16 @@ class VerifyEmailView(views.APIView):
     Verify the User Email by clicking on the link sent to the user's email
     """
 
-
     @swagger_auto_schema(
         responses={
             200: """{"success": "Email verified successfully!"}""",
             400: """{"error": "Bad Request"}""",
         }
     )
-    def get(self,request,token):
+    def get(self, request, token):
         print(token)
         verif_row = VerificationModel.objects.filter(email_token=token).first()
-        
+
         print(verif_row)
         if verif_row is None:
             return Response(
@@ -268,8 +264,6 @@ class VerifyEmailView(views.APIView):
             return HttpResponseRedirect(redirect_to=config("FRONTEND_URL")+"/login")
         user.email_verified = True
         user.save()
-        # send_approved_email(user.email)
-        # send email informing the user that email has been verified and account will shortly be activated after a review by our team
         send_email_cnf_email(user.email)
         print("returning success resp")
         return HttpResponseRedirect(redirect_to=config("FRONTEND_URL")+"/login")
@@ -315,6 +309,7 @@ class VerifyOTPView(generics.GenericAPIView):
     """
     serializer_class = VerifyOTPSerializer
     permission_classes = [permissions.AllowAny]
+
     @swagger_auto_schema(
         responses={
             202: """{"detail": "OTP Verified"}""",
@@ -330,10 +325,12 @@ class VerifyOTPView(generics.GenericAPIView):
 
         user = UserAccount.objects.filter(email=email).first()
         if user is not None:
-            user_otp = ForgotPasswordOTPModel.objects.filter(user=user, otp=otp).first()
+            user_otp = ForgotPasswordOTPModel.objects.filter(
+                user=user, otp=otp).first()
             if not user_otp.has_been_used:
                 if (
-                    datetime.datetime.now(datetime.timezone.utc) - user_otp.last_created
+                    datetime.datetime.now(
+                        datetime.timezone.utc) - user_otp.last_created
                 ).seconds > 600:
                     user_otp.delete()
                     return Response(
@@ -407,14 +404,15 @@ class ResetPasswordAPIView(generics.GenericAPIView):
                 )
             return Response(
                 {"detail": "Passwords don't match"}, status=status.HTTP_400_BAD_REQUEST)
-        return Response( {"detail": "OTP not verified or has been already used."}, status=status.HTTP_401_UNAUTHORIZED)
-    
+        return Response({"detail": "OTP not verified or has been already used."}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 class AvatarChangeView(views.APIView):
     """
     Changes the avatar of the user
     """
     permission_classes = [permissions.IsAuthenticated]
+
     @swagger_auto_schema(
         responses={
             200: """{"detail": "Avatar changed successfully"}""",
@@ -426,4 +424,3 @@ class AvatarChangeView(views.APIView):
         profile.avatar_id = avatar_id
         profile.save()
         return Response({"detail": "Avatar changed successfully"}, status=status.HTTP_200_OK)
-    

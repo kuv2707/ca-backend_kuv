@@ -1,21 +1,15 @@
-from django.shortcuts import render
 from rest_framework import generics, mixins, status, views, permissions
-from .models import Task ,TaskSubmission
+from .models import Task, TaskSubmission
 from .serializers import TaskSerializer
 from Authentication.models import UserProfile
-from .serializers import LeaderboardSerializer , TaskSubmissionSerializer
+from .serializers import LeaderboardSerializer, TaskSubmissionSerializer
 from rest_framework.response import Response
 from ca_backend.permissions import IsAdminUser, IsStaffUser
 from django.utils import timezone
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from rest_framework import parsers
-from Authentication.serializers import ProfileSerializer
-
-# import Url validator
 from django.core.validators import URLValidator
-
-# Create your views here.
 
 
 class TaskListCreateAPIView(generics.ListCreateAPIView):
@@ -28,7 +22,6 @@ class TaskListCreateAPIView(generics.ListCreateAPIView):
     serializer_class = TaskSerializer
     permission_classes = [IsStaffUser]
     parser_classes = [parsers.MultiPartParser]
-
 
 
 class TaskManipulateAPIView(
@@ -78,8 +71,10 @@ class SubmitTaskAPIView(views.APIView):
     parser_classes = [parsers.MultiPartParser]
 
     @swagger_auto_schema(manual_parameters=[
-        openapi.Parameter('link', openapi.IN_FORM, type=openapi.TYPE_STRING, description='Link to the Task Submission'),
-        openapi.Parameter('image', openapi.IN_FORM, type=openapi.TYPE_FILE, description='Image of the Task Submission')
+        openapi.Parameter('link', openapi.IN_FORM, type=openapi.TYPE_STRING,
+                          description='Link to the Task Submission'),
+        openapi.Parameter('image', openapi.IN_FORM, type=openapi.TYPE_FILE,
+                          description='Image of the Task Submission')
     ])
     def post(self, request, task_id, *args, **kwargs):
         user_id = request.user
@@ -90,8 +85,8 @@ class SubmitTaskAPIView(views.APIView):
             return Response({"status": "Task Deadline Expired"}, status=status.HTTP_400_BAD_REQUEST)
         user = UserProfile.objects.filter(user=user_id).first()
         if TaskSubmission.objects.filter(task=task, user=user).exists():
-            return Response({"status: Task Already Submitted"},status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({"status: Task Already Submitted"}, status=status.HTTP_400_BAD_REQUEST)
+
         validate = URLValidator()
         try:
             link = request.data["link"]
@@ -101,15 +96,18 @@ class SubmitTaskAPIView(views.APIView):
         except Exception as e:
             return Response({"status": "Invalid Link"}, status=status.HTTP_400_BAD_REQUEST)
 
-        image = request.data.get("image", None)    
-        task_submission = TaskSubmission(task=task, user=user, link=link, image=image)
-        
+        image = request.data.get("image", None)
+        task_submission = TaskSubmission(
+            task=task, user=user, link=link, image=image)
+
         task_submission.save()
         return Response({"status": "Task Submitted"}, status=status.HTTP_200_OK)
-    
+
     @swagger_auto_schema(manual_parameters=[
-        openapi.Parameter('link', openapi.IN_FORM, type=openapi.TYPE_STRING, description='Link to the Task Submission'),
-        openapi.Parameter('image', openapi.IN_FORM, type=openapi.TYPE_FILE, description='Image of the Task Submission')
+        openapi.Parameter('link', openapi.IN_FORM, type=openapi.TYPE_STRING,
+                          description='Link to the Task Submission'),
+        openapi.Parameter('image', openapi.IN_FORM, type=openapi.TYPE_FILE,
+                          description='Image of the Task Submission')
     ])
     def patch(self, request, task_id, *args, **kwargs):
         """
@@ -130,17 +128,18 @@ class SubmitTaskAPIView(views.APIView):
         user_id = request.user
         task = Task.objects.filter(id=task_id).first()
         user = UserProfile.objects.filter(user=user_id).first()
-        task_submission = TaskSubmission.objects.filter(task=task, user=user).first()
+        task_submission = TaskSubmission.objects.filter(
+            task=task, user=user).first()
         if link is not None:
             task_submission.link = link
-            
+
         image = request.data.get("image", None)
         if image is not None:
             task_submission.image = image
 
         task_submission.save()
         return Response({"status": "Task Submission Updated"}, status=status.HTTP_200_OK)
-    
+
 
 class AdminVerifyTaskSubmissionAPIView(views.APIView):
     permission_classes = [IsStaffUser]
@@ -155,7 +154,7 @@ class AdminVerifyTaskSubmissionAPIView(views.APIView):
         """
         View for Admin to verify the Task Submission. Can only be accessed by Admin/Staff User. This will verify the task submission and add the points to the user's profile.
         """
-        
+
         if not TaskSubmission.objects.filter(id=task_submission_id).exists():
             return Response({"status": "Task Submission Does Not Exist"}, status=status.HTTP_404_NOT_FOUND)
         if TaskSubmission.objects.get(id=task_submission_id).verified:
@@ -172,7 +171,7 @@ class AdminVerifyTaskSubmissionAPIView(views.APIView):
             pass
         task_submission.save()
         return Response({"status": "Task Submission Verified"}, status=status.HTTP_200_OK)
-    
+
     @swagger_auto_schema(request_body=openapi.Schema(
         type=openapi.TYPE_OBJECT,
         properties={
@@ -191,7 +190,7 @@ class AdminVerifyTaskSubmissionAPIView(views.APIView):
         task_submission.admin_comment = request.data["admin_comment"]
         task_submission.save()
         return Response({"status": "Task Submission Commented"}, status=status.HTTP_200_OK)
-    
+
 
 class SubmittedUserTasksListAPIView(generics.ListAPIView):
     """
@@ -200,7 +199,7 @@ class SubmittedUserTasksListAPIView(generics.ListAPIView):
 
     permission_classes = [permissions.IsAuthenticated, IsAdminUser]
     serializer_class = TaskSubmissionSerializer
-    
+
     def get(self, request, *args, **kwargs):
         # add list of all users to the response
         users = UserProfile.objects.all()
@@ -209,20 +208,21 @@ class SubmittedUserTasksListAPIView(generics.ListAPIView):
         response = []
         for user in usernames:
             user_submissions = submissions.filter(user__user_name=user)
-            user_submissions_serializer = TaskSubmissionSerializer(user_submissions, many=True)
-            # Fix: Check if the link is a relative URL and prepend the base URL if necessary
+            user_submissions_serializer = TaskSubmissionSerializer(
+                user_submissions, many=True)
+            # Check if the link is a relative URL and prepend the base URL if necessary
             for submission in user_submissions_serializer.data:
                 if submission['image'] and not submission['image'].startswith('http'):
-                    submission['image'] = request.build_absolute_uri(submission['image'])
+                    submission['image'] = request.build_absolute_uri(
+                        submission['image'])
                 if submission['task']['image'] and not submission['task']['image'].startswith('http'):
-                    submission['task']['image'] = request.build_absolute_uri(submission['task']['image'])
+                    submission['task']['image'] = request.build_absolute_uri(
+                        submission['task']['image'])
             response.append({"user": user,
-                              "submissions": user_submissions_serializer.data})
-       
+                             "submissions": user_submissions_serializer.data})
+
         return Response(response, status=status.HTTP_200_OK)
 
-    
-    
 
 class UserSubmittedTasksListAPIView(generics.ListAPIView):
     """
@@ -231,7 +231,7 @@ class UserSubmittedTasksListAPIView(generics.ListAPIView):
 
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = TaskSubmissionSerializer
-    
+
     def get_queryset(self):
         user = self.request.user
         profile = UserProfile.objects.get(user=user)

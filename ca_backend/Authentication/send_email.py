@@ -26,7 +26,6 @@ def send(rec_email,msg):
         connection.starttls()
         connection.login(user=config("EMAIL_HOST_USER"), password=config("EMAIL_HOST_PASSWORD"))
         connection.sendmail(from_addr=config("EMAIL_HOST_USER"), to_addrs=rec_email,msg=msg)
-        # connection.close()
     
 
 
